@@ -1,0 +1,26 @@
+services:
+  redis:
+    image: redis
+    container_name: vision_redis
+    ports:
+      - "6379:6379"
+
+  api:
+    build: .
+    container_name: vision_api
+    ports:
+      - "3000:3000"
+    depends_on:
+      - redis
+    environment:
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+    command: node src/server.js
+
+  worker:
+    build: .
+    container_name: vision_worker
+    depends_on:
+      - redis
+    environment:
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+    command: node src/workers/vision.worker.js
