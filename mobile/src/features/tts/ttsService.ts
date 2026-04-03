@@ -1,10 +1,9 @@
-import apiClient from "../../infrastructure/apiClient"
+import * as Speech from "expo-speech"
 
-export const describeImage = async (imageBase64: string) => {
-
-  const response = await apiClient.post("/vision/describe", {
-    image: imageBase64
+export const speakText = (text: string) => {
+  Speech.speak(text, {
+    language: "es",
+    pitch: 1.0,
+    rate: 0.9
   })
-
-  return response.data.description
 }
