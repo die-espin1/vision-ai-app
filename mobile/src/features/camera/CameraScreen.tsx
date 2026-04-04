@@ -22,16 +22,22 @@ export default function CameraScreen() {
 
     try {
 
-      const photo = await cameraRef.current?.takePictureAsync()
+      if (!cameraRef.current) {
+        console.log("Camera no lista")
+        return
+      }
 
-      if (!photo) return
+      // 📸 Tomar foto
+      const photo = await cameraRef.current.takePictureAsync()
 
+      // 🧠 (opcional) compresión ligera
       const compressed = await ImageManipulator.manipulateAsync(
         photo.uri,
         [{ resize: { width: 800 } }],
         { compress: 0.6, format: ImageManipulator.SaveFormat.JPEG }
       )
 
+      // 📦 FormData para backend
       const formData = new FormData()
 
       formData.append("image", {
@@ -40,21 +46,49 @@ export default function CameraScreen() {
         type: "image/jpeg"
       } as any)
 
+      // 🚀 Enviar a backend
       const response = await apiClient.post("/vision/describe", formData, {
         headers: {
           "Content-Type": "multipart/form-data"
         }
       })
 
-      const { description } = response.data
+      const data = response.data
 
-      speakText(description)
+      // 🟢 Respuesta inmediata
+      if (data.status === "completed") {
+        speakText(data.description)
+        return
+      }
+
+      // 🟡 Fallback async (cola)
+      if (data.status === "processing") {
+
+        const jobId = data.jobId
+
+        let result
+
+        while (true) {
+
+          const res = await apiClient.get(`/vision/status/${jobId}`)
+          result = res.data
+
+          if (result.status === "completed") break
+
+          await new Promise(r => setTimeout(r, 2000))
+        }
+
+        speakText(result.description)
+      }
 
     } catch (error) {
 
       console.error(error)
 
-      Alert.alert("Error", "No se pudo procesar la imagen")
+      Alert.alert(
+        "Error",
+        "No se pudo procesar la imagen. Verifica conexión o intenta nuevamente."
+      )
     }
   }
 

@@ -6,7 +6,9 @@ services:
       - "6379:6379"
 
   api:
-    build: .
+    build:
+      context: .
+      dockerfile: Dockerfile
     container_name: vision_api
     ports:
       - "3000:3000"
@@ -17,7 +19,9 @@ services:
     command: node src/server.js
 
   worker:
-    build: .
+    build:
+      context: .
+      dockerfile: Dockerfile.worker
     container_name: vision_worker
     depends_on:
       - redis
