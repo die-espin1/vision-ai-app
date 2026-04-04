@@ -42,10 +42,10 @@ async function describeImage(base64Image) {
               mimeType: "image/jpeg"
             }
           },
-          "Describe detalladamente esta imagen para una persona ciega. Explica objetos, personas, colores, posiciones y contexto."
+          "Describe detalladamente esta imagen para una persona ciega. Explica objetos, personas, colores, posiciones y contexto. De forma breve y concisa."
         ]),
         new Promise((_, reject) =>
-          setTimeout(() => reject(new Error("Timeout Gemini")), 5000)
+          setTimeout(() => reject(new Error("Timeout Gemini")), 15000)
         )
       ]);
 
