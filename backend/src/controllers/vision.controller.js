@@ -1,4 +1,5 @@
 const visionService = require("../services/vision.service");
+const visionQueue = require("../queues/vision.queue");
 
 // POST /vision/describe
 async function describeImage(req, res) {
@@ -9,7 +10,6 @@ async function describeImage(req, res) {
 
     const base64Image = req.file.buffer.toString("base64");
 
-    // 🔥 SOLO cola (sin Gemini aquí)
     const job = await visionService.sendToQueue(base64Image);
 
     return res.json({
@@ -28,7 +28,7 @@ async function getJobStatus(req, res) {
   try {
     const { jobId } = req.params;
 
-    const job = await visionService.getJob(jobId);
+    const job = await visionQueue.getJob(jobId);
 
     if (!job) {
       return res.status(404).json({ error: "Job no encontrado" });

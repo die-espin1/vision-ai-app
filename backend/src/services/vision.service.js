@@ -1,89 +1,111 @@
 const { GoogleGenerativeAI } = require("@google/generative-ai");
 const { compressImage } = require("../utils/image.utils");
 const visionQueue = require("../queues/vision.queue");
+const crypto = require("crypto");
+const IORedis = require("ioredis");
 
+// 🔌 Redis para cache
+const redis = new IORedis({
+  host: "redis",
+  port: 6379
+});
+
+// Inicializar Gemini
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
 const model = genAI.getGenerativeModel({
   model: "gemini-3-flash-preview"
 });
 
-// 🔹 Limitar texto
-function limitText(text, maxWords = 50) {
+// 🔹 generar hash de imagen
+function getImageHash(base64) {
+  return crypto.createHash("md5").update(base64).digest("hex");
+}
+
+// 🔹 limitar texto
+function limitText(text, maxWords = 60) {
   if (!text) return "";
   return text.split(" ").slice(0, maxWords).join(" ");
 }
 
-// 🔹 SOLO enviar a cola
+// 🔹 enviar a cola
 async function sendToQueue(base64Image) {
   console.log("Enviando imagen a la cola...");
-
+  
   return await visionQueue.add("analyze-image", {
     image: base64Image
   });
 }
 
-// 🔹 Obtener job
-async function getJob(jobId) {
-  return await visionQueue.getJob(jobId);
-}
-
-// 🔹 PROCESAMIENTO REAL (SOLO worker usa esto)
+// 🔹 procesamiento principal
 async function describeImage(base64Image) {
 
   if (!base64Image) {
     throw new Error("Imagen inválida");
   }
 
+  const hash = getImageHash(base64Image);
+
+  // 🔥 1. Revisar cache
+  const cached = await redis.get(`vision:${hash}`);
+  if (cached) {
+    console.log("Respuesta desde cache");
+    return cached;
+  }
+
   console.log("Comprimiendo imagen...");
   const compressedImage = await compressImage(base64Image);
 
   const prompt = `
-Describe esta imagen en máximo 50 palabras.
-
-Reglas:
-- Claro y directo
-- Objetos, colores y posiciones
-- Duración < 20 segundos
-- Si es un texto, leelo completamente
+Describe esta imagen para una persona ciega en máximo 50 palabras.
+Sé claro, directo y breve. Máximo 20 segundos de audio.
 `;
 
-  try {
+  for (let attempt = 1; attempt <= 2; attempt++) {
 
-    console.log("Procesando con Gemini...");
+    try {
 
-    const result = await Promise.race([
-      model.generateContent([
-        {
-          inlineData: {
-            data: compressedImage,
-            mimeType: "image/jpeg"
-          }
-        },
-        prompt
-      ]),
-      new Promise((_, reject) =>
-        setTimeout(() => reject(new Error("Timeout Gemini")), 10000)
-      )
-    ]);
+      console.log(`Procesando con Gemini (intento ${attempt})...`);
 
-    const response = await result.response;
-    let text = response.text();
+      const result = await Promise.race([
+        model.generateContent([
+          {
+            inlineData: {
+              data: compressedImage,
+              mimeType: "image/jpeg"
+            }
+          },
+          prompt
+        ]),
+        new Promise((_, reject) =>
+          setTimeout(() => reject(new Error("Timeout Gemini")), 10000)
+        )
+      ]);
 
-    text = limitText(text, 50);
+      const response = await result.response;
+      let text = limitText(response.text(), 60);
 
-    console.log("Descripción generada correctamente");
+      // 🔥 2. Guardar en cache (10 minutos)
+      await redis.set(`vision:${hash}`, text, "EX", 600);
 
-    return text;
+      console.log("Descripción generada correctamente");
 
-  } catch (error) {
-    console.error("Error en Gemini:", error.message);
-    throw error;
+      return text;
+
+    } catch (error) {
+
+      console.error(`Error en intento ${attempt}:`, error.message);
+
+      if (attempt === 2) {
+        throw error;
+      }
+
+      await new Promise(r => setTimeout(r, 500));
+    }
   }
 }
 
 module.exports = {
   describeImage,
-  sendToQueue,
-  getJob
+  sendToQueue
 };
