@@ -2,30 +2,33 @@ const { GoogleGenerativeAI } = require("@google/generative-ai");
 const { compressImage } = require("../utils/image.utils");
 const visionQueue = require("../queues/vision.queue");
 
-// Inicializar Gemini
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
 const model = genAI.getGenerativeModel({
   model: "gemini-3-flash-preview"
 });
 
-// 🔹 Limitar texto (backup de seguridad)
-function limitText(text, maxWords = 60) {
+// 🔹 Limitar texto
+function limitText(text, maxWords = 50) {
   if (!text) return "";
-  const words = text.split(" ");
-  return words.slice(0, maxWords).join(" ");
+  return text.split(" ").slice(0, maxWords).join(" ");
 }
 
-// 🔹 Enviar a cola (modo async)
+// 🔹 SOLO enviar a cola
 async function sendToQueue(base64Image) {
   console.log("Enviando imagen a la cola...");
-  
+
   return await visionQueue.add("analyze-image", {
     image: base64Image
   });
 }
 
-// 🔹 Procesamiento principal (modo sync)
+// 🔹 Obtener job
+async function getJob(jobId) {
+  return await visionQueue.getJob(jobId);
+}
+
+// 🔹 PROCESAMIENTO REAL (SOLO worker usa esto)
 async function describeImage(base64Image) {
 
   if (!base64Image) {
@@ -35,67 +38,51 @@ async function describeImage(base64Image) {
   console.log("Comprimiendo imagen...");
   const compressedImage = await compressImage(base64Image);
 
-  // 🎯 Prompt optimizado (máx 20 segundos de audio)
   const prompt = `
-Describe esta imagen para una persona ciega en máximo 50 palabras.
+Describe esta imagen en máximo 50 palabras.
 
 Reglas:
-- Sé claro y directo
-- Menciona solo lo más importante
-- Evita detalles innecesarios
-- Usa frases cortas
-- Máximo 2-3 oraciones
-
-Objetivo: que la descripción se pueda escuchar en menos de 20 segundos.
+- Claro y directo
+- Objetos, colores y posiciones
+- Duración < 20 segundos
 `;
 
-  for (let attempt = 1; attempt <= 3; attempt++) {
+  try {
 
-    try {
+    console.log("Procesando con Gemini...");
 
-      console.log(`Procesando con Gemini (intento ${attempt})...`);
+    const result = await Promise.race([
+      model.generateContent([
+        {
+          inlineData: {
+            data: compressedImage,
+            mimeType: "image/jpeg"
+          }
+        },
+        prompt
+      ]),
+      new Promise((_, reject) =>
+        setTimeout(() => reject(new Error("Timeout Gemini")), 10000)
+      )
+    ]);
 
-      const result = await Promise.race([
-        model.generateContent([
-          {
-            inlineData: {
-              data: compressedImage,
-              mimeType: "image/jpeg"
-            }
-          },
-          prompt
-        ]),
-        new Promise((_, reject) =>
-          setTimeout(() => reject(new Error("Timeout Gemini")), 15000)
-        )
-      ]);
+    const response = await result.response;
+    let text = response.text();
 
-      const response = await result.response;
-      let text = response.text();
+    text = limitText(text, 50);
 
-      // 🔒 Aplicar límite adicional
-      text = limitText(text, 60);
+    console.log("Descripción generada correctamente");
 
-      console.log("Descripción generada correctamente");
+    return text;
 
-      return text;
-
-    } catch (error) {
-
-      console.error(`Error en intento ${attempt}:`, error.message);
-
-      if (attempt === 3) {
-        console.error("Falló definitivamente Gemini");
-        throw error;
-      }
-
-      console.log("Reintentando...");
-      await new Promise(r => setTimeout(r, 1000));
-    }
+  } catch (error) {
+    console.error("Error en Gemini:", error.message);
+    throw error;
   }
 }
 
 module.exports = {
   describeImage,
-  sendToQueue
+  sendToQueue,
+  getJob
 };

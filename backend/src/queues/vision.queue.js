@@ -1,7 +1,6 @@
 const { Queue } = require("bullmq");
 const IORedis = require("ioredis");
 
-// Conexión única a Redis (Docker → "redis")
 const connection = new IORedis({
   host: "redis",
   port: 6379,
@@ -12,7 +11,6 @@ const connection = new IORedis({
   }
 });
 
-// Cola de visión
 const visionQueue = new Queue("vision-queue", {
   connection
 });

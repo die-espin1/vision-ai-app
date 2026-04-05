@@ -5,11 +5,7 @@ const { describeImage } = require("../services/vision.service");
 const connection = new IORedis({
   host: "redis",
   port: 6379,
-  maxRetriesPerRequest: null,
-  retryStrategy: (times) => {
-    console.log("Reintentando conexión a Redis...", times);
-    return Math.min(times * 1000, 5000);
-  }
+  maxRetriesPerRequest: null
 });
 
 const worker = new Worker(
@@ -23,9 +19,15 @@ const worker = new Worker(
     const description = await describeImage(image);
 
     return { description };
+
   },
   {
-    connection
+    connection,
+    attempts: 2, // 🔥 máximo 2 intentos (antes 3+ duplicados)
+    backoff: {
+      type: "exponential",
+      delay: 2000
+    }
   }
 );
 
@@ -34,5 +36,5 @@ worker.on("completed", (job) => {
 });
 
 worker.on("failed", (job, err) => {
-  console.error(`Job ${job.id} falló`, err);
+  console.error(`Job ${job.id} falló`, err.message);
 });
