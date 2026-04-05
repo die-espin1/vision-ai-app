@@ -45,6 +45,7 @@ Reglas:
 - Claro y directo
 - Objetos, colores y posiciones
 - Duración < 20 segundos
+- Si es un texto, leelo completamente
 `;
 
   try {

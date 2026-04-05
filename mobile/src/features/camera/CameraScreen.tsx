@@ -1,6 +1,6 @@
 import { CameraView, useCameraPermissions } from "expo-camera"
-import { useRef } from "react"
-import { Button, View, Alert } from "react-native"
+import { useRef, useState } from "react"
+import { Button, View, Alert, ActivityIndicator } from "react-native"
 import * as ImageManipulator from "expo-image-manipulator"
 
 import apiClient from "../../infrastructure/apiClient"
@@ -9,13 +9,45 @@ import { speakText } from "../tts/ttsService"
 export default function CameraScreen() {
 
   const cameraRef = useRef<CameraView | null>(null)
-
   const [permission, requestPermission] = useCameraPermissions()
+  const [loading, setLoading] = useState(false)
 
   if (!permission) return null
 
   if (!permission.granted) {
     return <Button title="Permitir cámara" onPress={requestPermission} />
+  }
+
+  // 🔁 polling controlado (no bloqueante)
+  const checkStatus = async (jobId: string, attempts = 0) => {
+    try {
+
+      // ⛔ límite de intentos (evita loops infinitos)
+      if (attempts >= 10) {
+        Alert.alert("Error", "Tiempo de espera agotado")
+        setLoading(false)
+        return
+      }
+
+      const response = await apiClient.get(`/vision/status/${jobId}`)
+      const data = response.data
+
+      if (data.status === "completed") {
+        speakText(data.description)
+        setLoading(false)
+        return
+      }
+
+      // 🔁 reintento en 2s
+      setTimeout(() => {
+        checkStatus(jobId, attempts + 1)
+      }, 2000)
+
+    } catch (error) {
+      console.error("Error consultando estado:", error)
+      Alert.alert("Error", "Fallo al consultar el estado")
+      setLoading(false)
+    }
   }
 
   const takePicture = async () => {
@@ -27,17 +59,19 @@ export default function CameraScreen() {
         return
       }
 
+      setLoading(true)
+
       // 📸 Tomar foto
       const photo = await cameraRef.current.takePictureAsync()
 
-      // 🧠 (opcional) compresión ligera
+      // 🧠 Compresión
       const compressed = await ImageManipulator.manipulateAsync(
         photo.uri,
         [{ resize: { width: 800 } }],
         { compress: 0.6, format: ImageManipulator.SaveFormat.JPEG }
       )
 
-      // 📦 FormData para backend
+      // 📦 FormData
       const formData = new FormData()
 
       formData.append("image", {
@@ -55,30 +89,16 @@ export default function CameraScreen() {
 
       const data = response.data
 
-      // 🟢 Respuesta inmediata
+      // 🟢 respuesta inmediata
       if (data.status === "completed") {
         speakText(data.description)
+        setLoading(false)
         return
       }
 
-      // 🟡 Fallback async (cola)
+      // 🟡 procesamiento async
       if (data.status === "processing") {
-
-        const jobId = data.jobId
-
-        let result
-
-        while (true) {
-
-          const res = await apiClient.get(`/vision/status/${jobId}`)
-          result = res.data
-
-          if (result.status === "completed") break
-
-          await new Promise(r => setTimeout(r, 2000))
-        }
-
-        speakText(result.description)
+        checkStatus(data.jobId)
       }
 
     } catch (error) {
@@ -89,13 +109,20 @@ export default function CameraScreen() {
         "Error",
         "No se pudo procesar la imagen. Verifica conexión o intenta nuevamente."
       )
+
+      setLoading(false)
     }
   }
 
   return (
     <View style={{ flex: 1 }}>
       <CameraView ref={cameraRef} style={{ flex: 1 }} />
-      <Button title="Tomar foto" onPress={takePicture} />
+
+      {loading ? (
+        <ActivityIndicator size="large" style={{ position: "absolute", top: "50%", left: "45%" }} />
+      ) : (
+        <Button title="Tomar foto" onPress={takePicture} />
+      )}
     </View>
   )
 }
