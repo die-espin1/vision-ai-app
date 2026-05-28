@@ -122,7 +122,7 @@ export default function CameraScreen() {
       setIsAsking(true)
       stopSpeaking()
       setIsModalVisible(false)
-      const answer = await describeImage(imageUri, qText.trim())
+      const answer = await describeImage(imageUri, qText.trim(), originalDescription)
       setLastAnswer(answer)
       setQuestion("")
       transcriptRef.current = ""
@@ -137,7 +137,7 @@ export default function CameraScreen() {
     } finally {
       setIsAsking(false)
     }
-  }, [imageUri, isAsking])
+  }, [imageUri, isAsking, originalDescription])
 
   useSafeRecognitionEvent("start", () => {
     setIsListening(true)

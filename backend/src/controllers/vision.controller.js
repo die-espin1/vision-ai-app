@@ -10,9 +10,11 @@ async function describeImage(req, res) {
 
     const base64Image = req.file.buffer.toString("base64");
     const question = req.body.question || null;
+    const context = req.body.context || null;
     console.log("[controller] question recibida:", question);
+    console.log("[controller] context recibido:", context);
 
-    const job = await visionService.sendToQueue(base64Image, question);
+    const job = await visionService.sendToQueue(base64Image, question, context);
 
     return res.json({
       status: "processing",

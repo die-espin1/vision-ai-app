@@ -1,33 +1,33 @@
 import apiClient from "../../infrastructure/apiClient"
 
-export const describeImage = async (imageBase64: string) => {
+export async function describeImage(
+  imageUri: string,
+  question?: string,
+  context?: string
+): Promise<string> {
+  const formData = new FormData()
 
-  // 1. Enviar imagen
-  const { data } = await apiClient.post("/vision/describe", {
-    image: imageBase64
+  formData.append("image", {
+    uri: imageUri,
+    name: "photo.jpg",
+    type: "image/jpeg",
+  } as any)
+
+  if (question) {
+    formData.append("question", question)
+  }
+
+  if (context) {
+    formData.append("context", context)
+  }
+
+  const { data } = await apiClient.post("/describe-image", formData, {
+    headers: { "Content-Type": "multipart/form-data" },
   })
 
-  const jobId = data.jobId
-
-  // 2. Polling
-  let result = null
-
-  for (let i = 0; i < 10; i++) {
-
-    await new Promise(r => setTimeout(r, 2000))
-
-    const res = await apiClient.get(`/vision/result/${jobId}`)
-
-    if (res.data.status === "completed") {
-      result = res.data.result
-      break
-    }
-
+  if (!data.description) {
+    throw new Error("Sin descripción en respuesta")
   }
 
-  if (!result) {
-    throw new Error("Timeout procesando imagen")
-  }
-
-  return result.description
+  return data.description
 }

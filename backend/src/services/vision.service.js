@@ -29,17 +29,18 @@ function limitText(text, maxWords = 100) {
 }
 
 // 🔹 enviar a cola
-async function sendToQueue(base64Image, question = null) {
+async function sendToQueue(base64Image, question = null, context = null) {
   console.log("Enviando imagen a la cola...");
 
   return await visionQueue.add("analyze-image", {
     image: base64Image,
-    question
+    question,
+    context
   });
 }
 
 // 🔹 procesamiento principal
-async function describeImage(base64Image, question = null) {
+async function describeImage(base64Image, question = null, context = null) {
 
   if (!base64Image) {
     throw new Error("Imagen inválida");
@@ -62,7 +63,15 @@ async function describeImage(base64Image, question = null) {
   const compressedImage = await compressImage(base64Image);
 
   const prompt = question
-    ? `Sobre esta imagen, responde en español: "${question}". Sé específico y detallado. Sin frases introductorias.`
+    ? `
+Estás analizando una imagen. Ya generaste esta descripción de ella:
+"${context}"
+
+Basándote en la imagen y en esa descripción, responde en español esta pregunta de forma precisa y específica:
+"${question}"
+
+Ve directo a la respuesta. Sin frases introductorias.
+`
     : `
 Eres un asistente de visión para personas ciegas. Describe esta imagen de forma completa y detallada en español.
 

@@ -11,12 +11,12 @@ const connection = new IORedis({
 const worker = new Worker(
   "vision-queue",
   async (job) => {
-    const { image, question = null } = job.data;
+    const { image, question = null, context = null } = job.data;
 
     console.log("Procesando imagen en worker...");
 
     // describeImage maneja su propio cache internamente
-    const description = await describeImage(image, question);
+    const description = await describeImage(image, question, context);
 
     return { description };
   },
