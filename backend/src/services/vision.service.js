@@ -62,22 +62,23 @@ async function describeImage(base64Image, question = null) {
   const compressedImage = await compressImage(base64Image);
 
   const prompt = question
-    ? `Sobre esta imagen, responde concisamente en español: "${question}". Máximo 60 palabras. Ve directo a la respuesta sin frases introductorias.`
+    ? `Sobre esta imagen, responde en español: "${question}". Sé específico y detallado. Sin frases introductorias.`
     : `
-Eres un asistente de visión para personas ciegas. Describe esta imagen con precisión y estructura.
+Eres un asistente de visión para personas ciegas. Describe esta imagen de forma completa y detallada en español.
 
-Incluye en orden de importancia:
-1. Qué es la escena principal (interior, exterior, objeto, persona, documento, comida, etc.)
-2. Qué objetos o personas hay y dónde están ubicados (izquierda, centro, derecha, cerca, lejos)
-3. Colores dominantes, cantidades y detalles relevantes
-4. Texto visible en la imagen (carteles, etiquetas, pantallas) — léelo literalmente
-5. Si hay algo importante para la seguridad o navegación (escaleras, puertas, obstáculos, semáforos)
+Estructura la descripción en párrafos, en este orden:
+
+1. ESCENA GENERAL: Qué tipo de lugar o situación es. Qué ocupa el centro o elemento principal.
+2. OBJETOS Y PERSONAS: Describe cada elemento visible — qué es, dónde está (izquierda, derecha, centro, fondo, primer plano), color, tamaño aproximado, estado.
+3. TEXTO VISIBLE: Si hay carteles, etiquetas, pantallas, papeles o cualquier texto — léelo literalmente y di dónde está.
+4. DETALLES RELEVANTES: Colores dominantes, materiales, cantidades, marcas si se leen.
+5. SEGURIDAD O NAVEGACIÓN: Escaleras, puertas, obstáculos, semáforos, bordes, desniveles — solo si aplica.
 
 Reglas:
-- Máximo 80 palabras
-- Habla en español neutro, segunda persona: "Hay una...", "A tu izquierda...", "Se lee..."
-- No uses frases introductorias como "Esta imagen muestra..." — ve directo al contenido
-- Si hay texto en la imagen, siempre inclúyelo aunque sea largo
+- Sin límite de palabras — sé tan detallado como la imagen lo permita
+- Habla directo: "Hay una...", "A la izquierda...", "Se lee...", "En el fondo..."
+- No uses frases como "Esta imagen muestra" o "En esta imagen se puede ver"
+- Si algo no se distingue bien, dilo: "parece ser", "posiblemente"
 `;
 
   for (let attempt = 1; attempt <= 2; attempt++) {
@@ -97,12 +98,12 @@ Reglas:
           prompt
         ]),
         new Promise((_, reject) =>
-          setTimeout(() => reject(new Error("Timeout Gemini")), 10000)
+          setTimeout(() => reject(new Error("Timeout Gemini")), 20000)
         )
       ]);
 
       const response = await result.response;
-      let text = limitText(response.text(), question ? 70 : 100);
+      let text = response.text().trim();
 
       // 🔥 2. Guardar en cache (10 minutos)
       await redis.set(cacheKey, text, "EX", 600);
