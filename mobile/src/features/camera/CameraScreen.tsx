@@ -1,5 +1,5 @@
 import { CameraView, useCameraPermissions } from "expo-camera"
-import { useRef, useState, useCallback } from "react"
+import { useRef, useState, useCallback, useEffect } from "react"
 import {
   View, Text, Pressable, StyleSheet,
   AccessibilityInfo, Alert, ActivityIndicator, TextInput, Modal
@@ -7,7 +7,7 @@ import {
 import * as ImageManipulator from "expo-image-manipulator"
 import { describeImage } from "../vision/visionService"
 import { speakText, stopSpeaking } from "../tts/ttsService"
-import { saveDescription } from "../history/historyService"
+import { saveDescription, getLastItem } from "../history/historyService"
 import { Ionicons } from "@expo/vector-icons"
 import {
   SpeechRecognition,
@@ -117,12 +117,29 @@ export default function CameraScreen() {
   }, [status])
 
   const handleSendQuestion = useCallback(async (qText: string) => {
-    if (!imageUri || !qText.trim() || isAsking) return
+    if (!qText.trim() || isAsking) return
     try {
       setIsAsking(true)
       stopSpeaking()
       setIsModalVisible(false)
-      const answer = await describeImage(imageUri, qText.trim(), originalDescription)
+
+      // Usar imageUri del estado si existe, sino leer el último del historial
+      let activeUri = imageUri
+      let activeContext = originalDescription
+
+      if (!activeUri) {
+        const last = await getLastItem()
+        if (!last?.imageUri) {
+          const msg = "No hay imagen disponible para hacer preguntas."
+          speakText(msg)
+          Alert.alert("Sin imagen", msg)
+          return
+        }
+        activeUri = last.imageUri
+        activeContext = last.description
+      }
+
+      const answer = await describeImage(activeUri, qText.trim(), activeContext)
       setLastAnswer(answer)
       setQuestion("")
       transcriptRef.current = ""
@@ -138,6 +155,26 @@ export default function CameraScreen() {
       setIsAsking(false)
     }
   }, [imageUri, isAsking, originalDescription])
+
+  useEffect(() => {
+    let isMounted = true
+
+    async function loadLastHistoryItem() {
+      if (imageUri || lastDescription) return
+
+      const last = await getLastItem()
+      if (!isMounted || !last) return
+
+      setLastDescription(last.description)
+      setOriginalDescription(last.description)
+    }
+
+    loadLastHistoryItem()
+
+    return () => {
+      isMounted = false
+    }
+  }, [imageUri, lastDescription])
 
   useSafeRecognitionEvent("start", () => {
     setIsListening(true)
@@ -218,7 +255,7 @@ export default function CameraScreen() {
               </Text>
             </Pressable>
 
-            {status === "done" && lastDescription && (
+            {(status === "done" || status === "idle") && lastDescription && (
               <Pressable
                 style={[styles.btn, styles.secondaryBtn]}
                 onPress={() => setIsModalVisible(true)}

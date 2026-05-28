@@ -30,3 +30,8 @@ export async function getHistory(): Promise<HistoryItem[]> {
 export async function clearHistory(): Promise<void> {
   await AsyncStorage.removeItem(HISTORY_KEY)
 }
+
+export async function getLastItem(): Promise<HistoryItem | null> {
+  const history = await getHistory()
+  return history.length > 0 ? history[0] : null
+}
