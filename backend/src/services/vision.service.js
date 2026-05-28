@@ -5,10 +5,14 @@ const crypto = require("crypto");
 const IORedis = require("ioredis");
 
 // 🔌 Redis para cache
-const redis = new IORedis({
-  host: "redis",
-  port: 6379
-});
+const redisConfig = {
+  host: process.env.REDIS_HOST || "redis",
+  port: parseInt(process.env.REDIS_PORT || "6379"),
+  password: process.env.REDISPASSWORD || undefined,
+  maxRetriesPerRequest: null,
+};
+
+const redis = new IORedis(redisConfig);
 
 // Inicializar Gemini
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);

@@ -2,11 +2,14 @@ const { Worker } = require("bullmq");
 const IORedis = require("ioredis");
 const { describeImage } = require("../services/vision.service");
 
-const connection = new IORedis({
-  host: "redis",
-  port: 6379,
+const redisConfig = {
+  host: process.env.REDIS_HOST || "redis",
+  port: parseInt(process.env.REDIS_PORT || "6379"),
+  password: process.env.REDISPASSWORD || undefined,
   maxRetriesPerRequest: null,
-});
+};
+
+const connection = new IORedis(redisConfig);
 
 const worker = new Worker(
   "vision-queue",

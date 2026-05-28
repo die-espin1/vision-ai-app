@@ -16,6 +16,8 @@ services:
       - redis
     environment:
       - GEMINI_API_KEY=${GEMINI_API_KEY}
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
 
   worker:
     build:
@@ -26,3 +28,5 @@ services:
       - redis
     environment:
       - GEMINI_API_KEY=${GEMINI_API_KEY}
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
