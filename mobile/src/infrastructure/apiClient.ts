@@ -1,8 +1,7 @@
 import axios from "axios"
-import Constants from "expo-constants"
 
-const SUPABASE_URL = "https://yubekdiflmnmfizaqvnt.supabase.co"
-const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inl1YmVrZGlmbG1ubWZpemFxdm50Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzkzMjI1NDMsImV4cCI6MjA5NDg5ODU0M30.NOD-O9qoavGrY5ViixGl589LdJLRMOOOoihFBgCcuyA"
+const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL!
+const SUPABASE_ANON_KEY = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY!
 
 const apiClient = axios.create({
   baseURL: `${SUPABASE_URL}/functions/v1`,
