@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from "react"
+import { useState, useCallback } from "react"
 import {
   View, Text, FlatList, Pressable, Image,
   StyleSheet, Alert, ActivityIndicator
@@ -82,17 +82,20 @@ export default function HistoryScreen() {
               onPress={() => speakText(item.description)}
               accessible
               accessibilityLabel={`${formatDate(item.createdAt)}. ${item.description}. Toca para escuchar.`}
-              accessibilityRole="button">
+              accessibilityRole="button"
+            >
               {item.imageUri ? (
                 <Image
                   source={{ uri: item.imageUri }}
-                  style={styles.thumbnail}
+                  style={styles.photo}
                   resizeMode="cover"
                   accessibilityLabel="Foto capturada"
                 />
               ) : null}
-              <Text style={styles.date}>{formatDate(item.createdAt)}</Text>
-              <Text style={styles.desc}>{item.description}</Text>
+              <View style={styles.textBlock}>
+                <Text style={styles.date}>{formatDate(item.createdAt)}</Text>
+                <Text style={styles.desc}>{item.description}</Text>
+              </View>
             </Pressable>
           )}
         />
@@ -104,13 +107,15 @@ export default function HistoryScreen() {
 const styles = StyleSheet.create({
   container:  { flex: 1, backgroundColor: "#000" },
   center:     { flex: 1, justifyContent: "center", alignItems: "center" },
-  header:     { flexDirection: "row", justifyContent: "space-between", alignItems: "center", padding: 20, paddingTop: 60 },
+  header:     { flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingHorizontal: 20, paddingTop: 60, paddingBottom: 16 },
   title:      { color: "#fff", fontSize: 24, fontWeight: "700" },
   clearBtn:   { color: "#ff4444", fontSize: 14 },
-  list:       { padding: 16, gap: 12 },
-  card:       { backgroundColor: "#1a1a1a", borderRadius: 12, padding: 16, gap: 6 },
-  date:       { color: "#888", fontSize: 12 },
-  desc:       { color: "#fff", fontSize: 15, lineHeight: 22 },
+  list:       { padding: 16, gap: 20 },
+
+  card:       { backgroundColor: "#000", borderRadius: 0, overflow: "hidden" },
+  photo:      { width: "100%", height: 260, backgroundColor: "#111" },
+  textBlock:  { padding: 16, gap: 6 },
+  date:       { color: "#666", fontSize: 12 },
+  desc:       { color: "#fff", fontSize: 15, lineHeight: 24 },
   empty:      { color: "#888", fontSize: 16 },
-  thumbnail:  { width: "100%", height: 180, borderRadius: 8, marginBottom: 8 },
 })

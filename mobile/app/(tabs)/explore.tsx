@@ -1,112 +1,106 @@
-import { Image } from 'expo-image';
-import { Platform, StyleSheet } from 'react-native';
+import { useEffect, useMemo, useState } from "react"
+import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native"
+import { LANGUAGES, getTtsSettings, saveTtsSettings, TtsSettings } from "@/src/features/tts/ttsSettings"
 
-import { Collapsible } from '@/components/ui/collapsible';
-import { ExternalLink } from '@/components/external-link';
-import ParallaxScrollView from '@/components/parallax-scroll-view';
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { IconSymbol } from '@/components/ui/icon-symbol';
-import { Fonts } from '@/constants/theme';
+const RATE_OPTIONS = [0.75, 1.0, 1.5, 2.0]
 
-export default function TabTwoScreen() {
+function getRateLabel(rate: number): string {
+  if (rate <= 0.75) return "Lento"
+  if (rate <= 1.0) return "Normal"
+  if (rate <= 1.5) return "Rápido"
+  return "Muy rápido"
+}
+
+export default function SettingsScreen() {
+  const [settings, setSettings] = useState<TtsSettings>({ rate: 1.0, language: "es-419" })
+  const [savedVisible, setSavedVisible] = useState(false)
+
+  useEffect(() => {
+    getTtsSettings().then(setSettings).catch(() => {})
+  }, [])
+
+  const rateText = useMemo(() => `${settings.rate.toFixed(2)}x — ${getRateLabel(settings.rate)}`, [settings.rate])
+
+  const persist = async (next: TtsSettings) => {
+    setSettings(next)
+    await saveTtsSettings(next)
+    setSavedVisible(true)
+    setTimeout(() => setSavedVisible(false), 1500)
+  }
+
   return (
-    <ParallaxScrollView
-      headerBackgroundColor={{ light: '#D0D0D0', dark: '#353636' }}
-      headerImage={
-        <IconSymbol
-          size={310}
-          color="#808080"
-          name="chevron.left.forwardslash.chevron.right"
-          style={styles.headerImage}
-        />
-      }>
-      <ThemedView style={styles.titleContainer}>
-        <ThemedText
-          type="title"
-          style={{
-            fontFamily: Fonts.rounded,
-          }}>
-          Explore
-        </ThemedText>
-      </ThemedView>
-      <ThemedText>This app includes example code to help you get started.</ThemedText>
-      <Collapsible title="File-based routing">
-        <ThemedText>
-          This app has two screens:{' '}
-          <ThemedText type="defaultSemiBold">app/(tabs)/index.tsx</ThemedText> and{' '}
-          <ThemedText type="defaultSemiBold">app/(tabs)/explore.tsx</ThemedText>
-        </ThemedText>
-        <ThemedText>
-          The layout file in <ThemedText type="defaultSemiBold">app/(tabs)/_layout.tsx</ThemedText>{' '}
-          sets up the tab navigator.
-        </ThemedText>
-        <ExternalLink href="https://docs.expo.dev/router/introduction">
-          <ThemedText type="link">Learn more</ThemedText>
-        </ExternalLink>
-      </Collapsible>
-      <Collapsible title="Android, iOS, and web support">
-        <ThemedText>
-          You can open this project on Android, iOS, and the web. To open the web version, press{' '}
-          <ThemedText type="defaultSemiBold">w</ThemedText> in the terminal running this project.
-        </ThemedText>
-      </Collapsible>
-      <Collapsible title="Images">
-        <ThemedText>
-          For static images, you can use the <ThemedText type="defaultSemiBold">@2x</ThemedText> and{' '}
-          <ThemedText type="defaultSemiBold">@3x</ThemedText> suffixes to provide files for
-          different screen densities
-        </ThemedText>
-        <Image
-          source={require('@/assets/images/react-logo.png')}
-          style={{ width: 100, height: 100, alignSelf: 'center' }}
-        />
-        <ExternalLink href="https://reactnative.dev/docs/images">
-          <ThemedText type="link">Learn more</ThemedText>
-        </ExternalLink>
-      </Collapsible>
-      <Collapsible title="Light and dark mode components">
-        <ThemedText>
-          This template has light and dark mode support. The{' '}
-          <ThemedText type="defaultSemiBold">useColorScheme()</ThemedText> hook lets you inspect
-          what the user&apos;s current color scheme is, and so you can adjust UI colors accordingly.
-        </ThemedText>
-        <ExternalLink href="https://docs.expo.dev/develop/user-interface/color-themes/">
-          <ThemedText type="link">Learn more</ThemedText>
-        </ExternalLink>
-      </Collapsible>
-      <Collapsible title="Animations">
-        <ThemedText>
-          This template includes an example of an animated component. The{' '}
-          <ThemedText type="defaultSemiBold">components/HelloWave.tsx</ThemedText> component uses
-          the powerful{' '}
-          <ThemedText type="defaultSemiBold" style={{ fontFamily: Fonts.mono }}>
-            react-native-reanimated
-          </ThemedText>{' '}
-          library to create a waving hand animation.
-        </ThemedText>
-        {Platform.select({
-          ios: (
-            <ThemedText>
-              The <ThemedText type="defaultSemiBold">components/ParallaxScrollView.tsx</ThemedText>{' '}
-              component provides a parallax effect for the header image.
-            </ThemedText>
-          ),
-        })}
-      </Collapsible>
-    </ParallaxScrollView>
-  );
+    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Velocidad de voz</Text>
+        <Text style={styles.valueText}>{rateText}</Text>
+        <View style={styles.optionsRow}>
+          {RATE_OPTIONS.map((rate) => {
+            const active = settings.rate === rate
+            return (
+              <Pressable
+                key={rate}
+                style={[styles.optionBtn, active && styles.optionBtnActive]}
+                onPress={() => persist({ ...settings, rate })}
+                accessibilityRole="button"
+                accessibilityLabel={`Velocidad ${rate} por`}
+              >
+                <Text style={[styles.optionText, active && styles.optionTextActive]}>{rate.toFixed(2)}x</Text>
+              </Pressable>
+            )
+          })}
+        </View>
+      </View>
+
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Idioma</Text>
+        <View style={styles.languageColumn}>
+          {LANGUAGES.map((item) => {
+            const active = settings.language === item.value
+            return (
+              <Pressable
+                key={item.value}
+                style={[styles.optionBtn, styles.languageBtn, active && styles.optionBtnActive]}
+                onPress={() => persist({ ...settings, language: item.value })}
+                accessibilityRole="button"
+                accessibilityLabel={`Idioma ${item.label}`}
+              >
+                <Text style={[styles.optionText, active && styles.optionTextActive]}>{item.label}</Text>
+              </Pressable>
+            )
+          })}
+        </View>
+      </View>
+
+      <Text style={[styles.savedText, !savedVisible && styles.savedHidden]}>Guardado</Text>
+    </ScrollView>
+  )
 }
 
 const styles = StyleSheet.create({
-  headerImage: {
-    color: '#808080',
-    bottom: -90,
-    left: -35,
-    position: 'absolute',
+  container: { flex: 1, backgroundColor: "#000" },
+  content: { paddingTop: 56, paddingHorizontal: 20, paddingBottom: 40, gap: 28 },
+  section: { gap: 12 },
+  sectionTitle: { color: "#fff", fontSize: 24, fontWeight: "700" },
+  valueText: { color: "#999", fontSize: 14 },
+  optionsRow: { flexDirection: "row", flexWrap: "wrap", gap: 10 },
+  languageColumn: { gap: 10 },
+  optionBtn: {
+    backgroundColor: "#1c1c1c",
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: "#333",
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    alignItems: "center",
+    justifyContent: "center",
   },
-  titleContainer: {
-    flexDirection: 'row',
-    gap: 8,
+  languageBtn: { alignItems: "flex-start" },
+  optionBtnActive: {
+    backgroundColor: "#fff",
+    borderColor: "#fff",
   },
-});
+  optionText: { color: "#fff", fontSize: 15, fontWeight: "600" },
+  optionTextActive: { color: "#000" },
+  savedText: { color: "#8fd18f", fontSize: 13, textAlign: "center" },
+  savedHidden: { opacity: 0 },
+})

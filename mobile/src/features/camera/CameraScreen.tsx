@@ -29,7 +29,17 @@ export default function CameraScreen() {
   const [isAsking, setIsAsking] = useState(false)
   const [isModalVisible, setIsModalVisible] = useState(false)
   const [isListening, setIsListening] = useState(false)
+  const [isDescriptionVisible, setIsDescriptionVisible] = useState(false)
+  const hideTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const transcriptRef = useRef("")
+
+  const startHideTimer = useCallback(() => {
+    if (hideTimerRef.current) clearTimeout(hideTimerRef.current)
+    setIsDescriptionVisible(true)
+    hideTimerRef.current = setTimeout(() => {
+      setIsDescriptionVisible(false)
+    }, 8000)
+  }, [])
 
   const startListening = async () => {
     if (!isSpeechRecognitionAvailable) {
@@ -89,6 +99,8 @@ export default function CameraScreen() {
       setImageUri(null)
       setIsModalVisible(false)
       setLastAnswer(null)
+      if (hideTimerRef.current) clearTimeout(hideTimerRef.current)
+      setIsDescriptionVisible(false)
       setOriginalDescription("")
       const photo = await cameraRef.current.takePictureAsync({ skipProcessing: true })
       if (!photo?.uri) throw new Error("No se pudo tomar la foto")
@@ -101,6 +113,7 @@ export default function CameraScreen() {
       setImageUri(compressed.uri)
       const description = await describeImage(compressed.uri)
       setLastDescription(description)
+      startHideTimer()
       setOriginalDescription(description)
       setStatus("done")
       await saveDescription(description, compressed.uri)
@@ -123,7 +136,6 @@ export default function CameraScreen() {
       stopSpeaking()
       setIsModalVisible(false)
 
-      // Usar imageUri del estado si existe, sino leer el último del historial
       let activeUri = imageUri
       let activeContext = originalDescription
 
@@ -141,6 +153,7 @@ export default function CameraScreen() {
 
       const answer = await describeImage(activeUri, qText.trim(), activeContext)
       setLastAnswer(answer)
+      startHideTimer()
       setQuestion("")
       transcriptRef.current = ""
       speakText(answer)
@@ -154,38 +167,29 @@ export default function CameraScreen() {
     } finally {
       setIsAsking(false)
     }
-  }, [imageUri, isAsking, originalDescription])
+  }, [imageUri, isAsking, originalDescription, startHideTimer])
 
   useEffect(() => {
     let isMounted = true
 
     async function loadLastHistoryItem() {
       if (imageUri || lastDescription) return
-
       const last = await getLastItem()
       if (!isMounted || !last) return
-
       setLastDescription(last.description)
       setOriginalDescription(last.description)
     }
 
     loadLastHistoryItem()
-
-    return () => {
-      isMounted = false
-    }
+    return () => { isMounted = false }
   }, [imageUri, lastDescription])
 
-  useSafeRecognitionEvent("start", () => {
-    setIsListening(true)
-  })
+  useSafeRecognitionEvent("start", () => setIsListening(true))
 
   useSafeRecognitionEvent("end", () => {
     setIsListening(false)
     const finalQuestion = transcriptRef.current.trim()
-    if (finalQuestion) {
-      handleSendQuestion(finalQuestion)
-    }
+    if (finalQuestion) handleSendQuestion(finalQuestion)
   })
 
   useSafeRecognitionEvent("result", (event) => {
@@ -242,58 +246,59 @@ export default function CameraScreen() {
           </View>
         ) : (
           <>
-            <Pressable
-              style={styles.btn}
-              onPress={takePicture}
-              accessible
-              accessibilityLabel={status === "done" ? lastDescription : "Describir lo que tienes enfrente"}
-              accessibilityRole="button"
-              accessibilityHint="Doble toque para describir la escena"
-            >
-              <Text style={styles.btnText}>
-                {status === "done" ? "Describir de nuevo" : "Describir"}
-              </Text>
-            </Pressable>
-
-            {(status === "done" || status === "idle") && lastDescription && (
+            {lastAnswer && isDescriptionVisible && (
               <Pressable
-                style={[styles.btn, styles.secondaryBtn]}
-                onPress={() => setIsModalVisible(true)}
+                style={[styles.descBox, styles.answerBox]}
+                onPress={() => speakText(lastAnswer)}
                 accessible
-                accessibilityRole="button"
-                accessibilityLabel="Hacer pregunta sobre la imagen"
-                accessibilityHint="Toca dos veces para abrir el panel de preguntas y escribir o dictar tu pregunta"
+                accessibilityLabel={`Respuesta: ${lastAnswer}. Toca para escuchar de nuevo.`}
+                accessibilityRole="text"
               >
-                <Text style={styles.secondaryBtnText}>Hacer pregunta</Text>
+                <Text style={styles.answerLabel}>Respuesta</Text>
+                <Text style={styles.descText}>{lastAnswer}</Text>
               </Pressable>
             )}
-          </>
-        )}
-        {/* Respuesta a pregunta — aparece y se puede tocar para repetir */}
-        {lastAnswer && !isAsking && (
-          <Pressable
-            style={[styles.descBox, styles.answerBox]}
-            onPress={() => speakText(lastAnswer)}
-            accessible
-            accessibilityLabel={`Respuesta: ${lastAnswer}. Toca para escuchar de nuevo.`}
-            accessibilityRole="text"
-          >
-            <Text style={styles.answerLabel}>Respuesta</Text>
-            <Text style={styles.descText}>{lastAnswer}</Text>
-          </Pressable>
-        )}
 
-        {/* Descripción original — siempre visible */}
-        {lastDescription && !isAsking && (
-          <Pressable
-            style={styles.descBox}
-            onPress={() => speakText(lastDescription)}
-            accessible
-            accessibilityLabel={`Descripción: ${lastDescription}. Toca para escuchar de nuevo.`}
-            accessibilityRole="text"
-          >
-            <Text style={styles.descText}>{lastDescription}</Text>
-          </Pressable>
+            {lastDescription && isDescriptionVisible && (
+              <Pressable
+                style={styles.descBox}
+                onPress={() => speakText(lastDescription)}
+                accessible
+                accessibilityLabel={`Descripción: ${lastDescription}. Toca para escuchar de nuevo.`}
+                accessibilityRole="text"
+              >
+                <Text style={styles.descText}>{lastDescription}</Text>
+              </Pressable>
+            )}
+
+            <View style={styles.btnRow}>
+              <Pressable
+                style={styles.btn}
+                onPress={takePicture}
+                accessible
+                accessibilityLabel={status === "done" ? lastDescription : "Describir lo que tienes enfrente"}
+                accessibilityRole="button"
+                accessibilityHint="Doble toque para describir la escena"
+              >
+                <Text style={styles.btnText}>
+                  {status === "done" ? "De nuevo" : "Describir"}
+                </Text>
+              </Pressable>
+
+              {(status === "done" || status === "idle") && lastDescription && (
+                <Pressable
+                  style={[styles.btn, styles.secondaryBtn]}
+                  onPress={() => setIsModalVisible(true)}
+                  accessible
+                  accessibilityRole="button"
+                  accessibilityLabel="Hacer pregunta sobre la imagen"
+                  accessibilityHint="Toca dos veces para abrir el panel de preguntas"
+                >
+                  <Text style={styles.secondaryBtnText}>Preguntar</Text>
+                </Pressable>
+              )}
+            </View>
+          </>
         )}
       </View>
 
@@ -402,14 +407,15 @@ const styles = StyleSheet.create({
   camera:         { flex: 1 },
   center:         { flex: 1, justifyContent: "center", alignItems: "center", padding: 24, backgroundColor: "#000" },
   overlay:        { position: "absolute", bottom: 0, left: 0, right: 0, padding: 24, alignItems: "center", gap: 16 },
-  btn:            { backgroundColor: "#fff", paddingVertical: 18, paddingHorizontal: 48, borderRadius: 50, minWidth: 200, alignItems: "center" },
+  btnRow:         { flexDirection: "row", gap: 12, width: "100%" },
+  btn:            { flex: 1, backgroundColor: "#fff", paddingVertical: 18, borderRadius: 50, alignItems: "center" },
   loadingBox:     { alignItems: "center", gap: 12 },
   loadingText:    { color: "#fff", fontSize: 18, fontWeight: "500" },
   permissionText: { color: "#fff", fontSize: 18, textAlign: "center", marginBottom: 24, lineHeight: 26 },
   descBox:        { backgroundColor: "rgba(0,0,0,0.72)", borderRadius: 16, padding: 16, maxWidth: "100%" },
   descText:       { color: "#fff", fontSize: 16, lineHeight: 24, textAlign: "center" },
   btnText:        { fontSize: 20, fontWeight: "700", color: "#000" },
-  secondaryBtn:   { backgroundColor: "#1c1c1c", borderWidth: 1, borderColor: "#333", marginTop: 8 },
+  secondaryBtn:   { backgroundColor: "#1c1c1c", borderWidth: 1, borderColor: "#333" },
   secondaryBtnText: { color: "#fff", fontSize: 20, fontWeight: "700" },
   modalBackdrop:  { flex: 1, backgroundColor: "rgba(0,0,0,0.5)", justifyContent: "flex-end" },
   modalContent:   { backgroundColor: "#121212", borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, paddingBottom: 40, gap: 20, borderWidth: 1, borderColor: "#222" },
@@ -425,6 +431,6 @@ const styles = StyleSheet.create({
   submitBtnText:  { color: "#000", fontSize: 18, fontWeight: "700" },
   disabledBtn:    { opacity: 0.5 },
   warningText:    { color: "#888", fontSize: 13, textAlign: "center", marginBottom: -8 },
-  answerBox:   { borderColor: "#4a9eff", borderWidth: 1 },
-  answerLabel: { color: "#4a9eff", fontSize: 12, fontWeight: "600", marginBottom: 4 },
+  answerBox:      { borderColor: "#4a9eff", borderWidth: 1 },
+  answerLabel:    { color: "#4a9eff", fontSize: 12, fontWeight: "600", marginBottom: 4 },
 })
