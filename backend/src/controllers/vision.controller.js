@@ -1,7 +1,5 @@
 const visionService = require("../services/vision.service");
-const visionQueue = require("../queues/vision.queue");
 
-// POST /vision/describe
 async function describeImage(req, res) {
   try {
     if (!req.file) {
@@ -11,55 +9,20 @@ async function describeImage(req, res) {
     const base64Image = req.file.buffer.toString("base64");
     const question = req.body.question || null;
     const context = req.body.context || null;
-    console.log("[vision.controller] describeImage multipart fields:", {
-      question,
-      context,
+
+    console.log("[vision.controller] fields:", {
       hasQuestion: Boolean(question),
-      hasContext: Boolean(context)
+      hasContext: Boolean(context),
     });
 
-    const job = await visionService.sendToQueue(base64Image, question, context);
+    const description = await visionService.describeImage(base64Image, question, context);
 
-    return res.json({
-      status: "processing",
-      jobId: job.id
-    });
+    return res.json({ description });
 
   } catch (error) {
-    console.error(error);
+    console.error("[vision.controller] error:", error.message);
     res.status(500).json({ error: "Error procesando imagen" });
   }
 }
 
-// GET /vision/status/:jobId
-async function getJobStatus(req, res) {
-  try {
-    const { jobId } = req.params;
-
-    const job = await visionQueue.getJob(jobId);
-
-    if (!job) {
-      return res.status(404).json({ error: "Job no encontrado" });
-    }
-
-    const state = await job.getState();
-
-    if (state === "completed") {
-      return res.json({
-        status: "completed",
-        description: job.returnvalue.description
-      });
-    }
-
-    return res.json({ status: state });
-
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: "Error consultando job" });
-  }
-}
-
-module.exports = {
-  describeImage,
-  getJobStatus
-};
+module.exports = { describeImage };

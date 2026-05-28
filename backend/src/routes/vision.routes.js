@@ -4,11 +4,7 @@ const router = express.Router();
 const upload = require("../middlewares/upload.middleware");
 const visionController = require("../controllers/vision.controller");
 
-// ✅ endpoint correcto
 router.post("/describe", upload.single("image"), visionController.describeImage);
+// GET /status/:jobId eliminado: ya no hay cola ni jobs.
 
-// ✅ status
-router.get("/status/:jobId", visionController.getJobStatus);
-
-// 🔥 export correcto
 module.exports = router;

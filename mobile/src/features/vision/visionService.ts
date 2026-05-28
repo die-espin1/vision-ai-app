@@ -1,14 +1,4 @@
-import apiClient, { API_BASE_URL } from "../../infrastructure/apiClient"
-
-type DescribeResponse = {
-  description?: string
-  status?: string
-  jobId?: string
-}
-
-function wait(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms))
-}
+import apiClient from "../../infrastructure/apiClient"
 
 export async function describeImage(
   imageUri: string,
@@ -32,33 +22,19 @@ export async function describeImage(
   }
 
   if (__DEV__) {
-    console.log("[visionService] POST", `${API_BASE_URL}/vision/describe`, {
+    console.log("[visionService] POST /vision/describe", {
       hasQuestion: Boolean(question?.trim()),
       hasContext: Boolean(context?.trim()),
     })
   }
 
-  const { data } = await apiClient.post<DescribeResponse>("/vision/describe", formData, {
+  const { data } = await apiClient.post("/vision/describe", formData, {
     headers: { "Content-Type": "multipart/form-data" },
   })
 
-  if (data.description) {
-    return data.description
+  if (!data.description) {
+    throw new Error("Sin descripción en respuesta")
   }
 
-  if (!data.jobId) {
-    throw new Error("Sin jobId en respuesta")
-  }
-
-  for (let attempt = 0; attempt < 12; attempt += 1) {
-    await wait(2000)
-
-    const result = await apiClient.get<DescribeResponse>(`/vision/status/${data.jobId}`)
-
-    if (result.data.status === "completed" && result.data.description) {
-      return result.data.description
-    }
-  }
-
-  throw new Error("Timeout procesando imagen")
+  return data.description
 }
