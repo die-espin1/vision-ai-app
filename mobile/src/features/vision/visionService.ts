@@ -21,14 +21,7 @@ export async function describeImage(
     formData.append("context", context)
   }
 
-  if (__DEV__) {
-    console.log("[visionService] POST /vision/describe", {
-      hasQuestion: Boolean(question?.trim()),
-      hasContext: Boolean(context?.trim()),
-    })
-  }
-
-  const { data } = await apiClient.post("/vision/describe", formData, {
+  const { data } = await apiClient.post("/describe-image", formData, {
     headers: { "Content-Type": "multipart/form-data" },
   })
 

@@ -1,10 +1,16 @@
 import axios from "axios"
+import Constants from "expo-constants"
 
-export const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL || "http://192.168.1.7:3000"
+const SUPABASE_URL = "https://yubekdiflmnmfizaqvnt.supabase.co"
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inl1YmVrZGlmbG1ubWZpemFxdm50Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzkzMjI1NDMsImV4cCI6MjA5NDg5ODU0M30.NOD-O9qoavGrY5ViixGl589LdJLRMOOOoihFBgCcuyA"
 
 const apiClient = axios.create({
-  baseURL: API_BASE_URL,
+  baseURL: `${SUPABASE_URL}/functions/v1`,
   timeout: 30000,
+  headers: {
+    "apikey": SUPABASE_ANON_KEY,
+    "Authorization": `Bearer ${SUPABASE_ANON_KEY}`,
+  },
 })
 
 apiClient.interceptors.response.use(
