@@ -103,7 +103,7 @@ export default function CameraScreen() {
       setLastDescription(description)
       setOriginalDescription(description)
       setStatus("done")
-      await saveDescription(description)
+      await saveDescription(description, compressed.uri)
       speakText(description)
       AccessibilityInfo.announceForAccessibility(description)
     } catch (error: any) {
