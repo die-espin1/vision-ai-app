@@ -14,7 +14,7 @@ const redis = new IORedis({
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
 const model = genAI.getGenerativeModel({
-  model: "gemini-3-flash-preview"
+  model: "gemini-2.0-flash"
 });
 
 // 🔹 generar hash de imagen
@@ -23,31 +23,36 @@ function getImageHash(base64) {
 }
 
 // 🔹 limitar texto
-function limitText(text, maxWords = 60) {
+function limitText(text, maxWords = 100) {
   if (!text) return "";
   return text.split(" ").slice(0, maxWords).join(" ");
 }
 
 // 🔹 enviar a cola
-async function sendToQueue(base64Image) {
+async function sendToQueue(base64Image, question = null) {
   console.log("Enviando imagen a la cola...");
-  
+
   return await visionQueue.add("analyze-image", {
-    image: base64Image
+    image: base64Image,
+    question
   });
 }
 
 // 🔹 procesamiento principal
-async function describeImage(base64Image) {
+async function describeImage(base64Image, question = null) {
 
   if (!base64Image) {
     throw new Error("Imagen inválida");
   }
 
-  const hash = getImageHash(base64Image);
+  // Cache key incluye la pregunta para no mezclar respuestas
+  const imageHash = getImageHash(base64Image);
+  const cacheKey = question
+    ? `vision:${imageHash}:q:${getImageHash(question)}`
+    : `vision:${imageHash}`;
 
   // 🔥 1. Revisar cache
-  const cached = await redis.get(`vision:${hash}`);
+  const cached = await redis.get(cacheKey);
   if (cached) {
     console.log("Respuesta desde cache");
     return cached;
@@ -56,9 +61,23 @@ async function describeImage(base64Image) {
   console.log("Comprimiendo imagen...");
   const compressedImage = await compressImage(base64Image);
 
-  const prompt = `
-Describe esta imagen para una persona ciega en máximo 50 palabras.
-Sé claro, directo y breve. Máximo 20 segundos de audio.
+  const prompt = question
+    ? `Sobre esta imagen, responde concisamente en español: "${question}". Máximo 60 palabras. Ve directo a la respuesta sin frases introductorias.`
+    : `
+Eres un asistente de visión para personas ciegas. Describe esta imagen con precisión y estructura.
+
+Incluye en orden de importancia:
+1. Qué es la escena principal (interior, exterior, objeto, persona, documento, comida, etc.)
+2. Qué objetos o personas hay y dónde están ubicados (izquierda, centro, derecha, cerca, lejos)
+3. Colores dominantes, cantidades y detalles relevantes
+4. Texto visible en la imagen (carteles, etiquetas, pantallas) — léelo literalmente
+5. Si hay algo importante para la seguridad o navegación (escaleras, puertas, obstáculos, semáforos)
+
+Reglas:
+- Máximo 80 palabras
+- Habla en español neutro, segunda persona: "Hay una...", "A tu izquierda...", "Se lee..."
+- No uses frases introductorias como "Esta imagen muestra..." — ve directo al contenido
+- Si hay texto en la imagen, siempre inclúyelo aunque sea largo
 `;
 
   for (let attempt = 1; attempt <= 2; attempt++) {
@@ -83,10 +102,10 @@ Sé claro, directo y breve. Máximo 20 segundos de audio.
       ]);
 
       const response = await result.response;
-      let text = limitText(response.text(), 60);
+      let text = limitText(response.text(), question ? 70 : 100);
 
       // 🔥 2. Guardar en cache (10 minutos)
-      await redis.set(`vision:${hash}`, text, "EX", 600);
+      await redis.set(cacheKey, text, "EX", 600);
 
       console.log("Descripción generada correctamente");
 
