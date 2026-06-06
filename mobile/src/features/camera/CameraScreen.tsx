@@ -205,26 +205,7 @@ export default function CameraScreen() {
     setIsListening(false)
   })
 
-  if (!permission) return <View style={styles.center}><ActivityIndicator /></View>
-
-  if (!permission.granted) {
-    return (
-      <View style={styles.center}>
-        <Text style={styles.permissionText}>
-          Esta app necesita acceso a la cámara para describir lo que tienes enfrente.
-        </Text>
-        <Pressable
-          style={styles.btn}
-          onPress={requestPermission}
-          accessible
-          accessibilityLabel="Permitir acceso a la cámara"
-          accessibilityRole="button"
-        >
-          <Text style={styles.btnText}>Permitir cámara</Text>
-        </Pressable>
-      </View>
-    )
-  }
+  if (!permission) return <View style={styles.container}><ActivityIndicator /></View>
 
   const isLoading = status === "capturing" || status === "processing"
 
@@ -232,7 +213,22 @@ export default function CameraScreen() {
     <View style={styles.container}>
       <CameraView ref={cameraRef} style={styles.camera} />
       <View style={styles.overlay}>
-        {isAsking ? (
+        {!permission.granted ? (
+          <View style={styles.permissionBox}>
+            <Text style={styles.permissionText}>
+              Esta app necesita acceso a la cámara para describir lo que tienes enfrente.
+            </Text>
+            <Pressable
+              style={styles.btn}
+              onPress={requestPermission}
+              accessible
+              accessibilityLabel="Permitir acceso a la cámara"
+              accessibilityRole="button"
+            >
+              <Text style={styles.btnText}>Permitir cámara</Text>
+            </Pressable>
+          </View>
+        ) : isAsking ? (
           <View accessibilityLiveRegion="polite" style={styles.loadingBox}>
             <ActivityIndicator size="large" color="#fff" />
             <Text style={styles.loadingText}>Procesando pregunta…</Text>
@@ -405,8 +401,8 @@ export default function CameraScreen() {
 const styles = StyleSheet.create({
   container:      { flex: 1, backgroundColor: "#000" },
   camera:         { flex: 1 },
-  center:         { flex: 1, justifyContent: "center", alignItems: "center", padding: 24, backgroundColor: "#000" },
   overlay:        { position: "absolute", bottom: 0, left: 0, right: 0, padding: 24, alignItems: "center", gap: 16 },
+  permissionBox:  { width: "100%", gap: 16, alignItems: "center" },
   btnRow:         { flexDirection: "row", gap: 12, width: "100%" },
   btn:            { flex: 1, backgroundColor: "#fff", paddingVertical: 18, borderRadius: 50, alignItems: "center" },
   loadingBox:     { alignItems: "center", gap: 12 },
