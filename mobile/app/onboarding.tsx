@@ -4,6 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { router } from 'expo-router';
+import LogoAnimation from '@/src/shared/components/LogoAnimation';
 
 export default function OnboardingScreen() {
   const steps = [
@@ -39,7 +40,9 @@ export default function OnboardingScreen() {
     <SafeAreaView style={styles.container}>
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <View style={styles.header}>
-          <Ionicons name="eye-outline" size={72} color="#fff" style={styles.headerIcon} />
+          <View style={styles.headerIcon}>
+            <LogoAnimation size={100} color="#fff" />
+          </View>
           <Text style={styles.headerTitle}>VisionAI</Text>
           <Text style={styles.headerSubtitle}>Tu asistente de visión</Text>
         </View>
