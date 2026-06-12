@@ -1,15 +1,12 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Pressable } from 'react-native';
+import React from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { router } from 'expo-router';
 import LogoAnimation from '@/src/shared/components/LogoAnimation';
-import { LANGUAGES, saveTtsSettings } from '@/src/features/tts/ttsSettings';
 
 export default function OnboardingScreen() {
-  const [selectedLanguage, setSelectedLanguage] = useState('es-419');
-
   const steps = [
     {
       icon: 'camera-outline' as const,
@@ -30,7 +27,6 @@ export default function OnboardingScreen() {
 
   const handleComplete = async () => {
     try {
-      await saveTtsSettings({ rate: 1.25, language: selectedLanguage });
       await AsyncStorage.setItem('onboarding:done', 'true');
       router.replace('/(tabs)');
     } catch (error) {
@@ -70,34 +66,6 @@ export default function OnboardingScreen() {
           ))}
         </View>
 
-        <View style={styles.languageSection}>
-          <Text style={styles.languageTitle}>¿En qué idioma quieres escuchar las descripciones?</Text>
-          <View style={styles.languageOptions}>
-            {LANGUAGES.map((lang) => (
-              <Pressable
-                key={lang.value}
-                style={[
-                  styles.langBtn,
-                  selectedLanguage === lang.value && styles.langBtnActive,
-                ]}
-                onPress={() => setSelectedLanguage(lang.value)}
-                accessibilityRole="radio"
-                accessibilityState={{ checked: selectedLanguage === lang.value }}
-                accessibilityLabel={lang.label}
-              >
-                <Text
-                  style={[
-                    styles.langBtnText,
-                    selectedLanguage === lang.value && styles.langBtnTextActive,
-                  ]}
-                >
-                  {lang.label}
-                </Text>
-              </Pressable>
-            ))}
-          </View>
-        </View>
-
         <TouchableOpacity
           style={styles.button}
           onPress={handleComplete}
@@ -131,10 +99,6 @@ const styles = StyleSheet.create({
     marginBottom: 32,
   },
   headerIcon: {
-    width: 120,
-    height: 120,
-    alignItems: 'center',
-    justifyContent: 'center',
     marginBottom: 16,
   },
   headerTitle: {
@@ -151,40 +115,6 @@ const styles = StyleSheet.create({
   },
   stepsContainer: {
     marginVertical: 16,
-  },
-  languageSection: {
-    marginVertical: 16,
-  },
-  languageTitle: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
-    marginBottom: 12,
-    textAlign: 'center',
-  },
-  languageOptions: {
-    gap: 10,
-  },
-  langBtn: {
-    backgroundColor: '#1c1c1c',
-    borderRadius: 12,
-    paddingVertical: 14,
-    paddingHorizontal: 16,
-    borderWidth: 1,
-    borderColor: '#333',
-  },
-  langBtnActive: {
-    backgroundColor: '#fff',
-    borderColor: '#fff',
-  },
-  langBtnText: {
-    color: '#999',
-    fontSize: 15,
-    textAlign: 'center',
-  },
-  langBtnTextActive: {
-    color: '#000',
-    fontWeight: '600',
   },
   stepRow: {
     flexDirection: 'row',

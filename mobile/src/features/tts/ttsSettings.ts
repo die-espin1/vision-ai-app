@@ -8,7 +8,7 @@ export type TtsSettings = {
 const SETTINGS_KEY = "tts:settings"
 
 const DEFAULT_SETTINGS: TtsSettings = {
-  rate: 1.25,
+  rate: 1.0,
   language: "es-419",
 }
 
