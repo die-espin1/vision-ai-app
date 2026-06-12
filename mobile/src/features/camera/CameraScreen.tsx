@@ -215,17 +215,21 @@ export default function CameraScreen() {
       <View style={styles.overlay}>
         {!permission.granted ? (
           <View style={styles.permissionBox}>
+            <View style={styles.permissionIconCircle}>
+              <Ionicons name="camera-outline" size={48} color="#fff" />
+            </View>
+            <Text style={styles.permissionTitle}>Acceso a la cámara</Text>
             <Text style={styles.permissionText}>
-              Esta app necesita acceso a la cámara para describir lo que tienes enfrente.
+              VisionAI necesita acceso a tu cámara para describir lo que tienes enfrente.
             </Text>
             <Pressable
-              style={styles.btn}
+              style={styles.permissionBtn}
               onPress={requestPermission}
               accessible
               accessibilityLabel="Permitir acceso a la cámara"
               accessibilityRole="button"
             >
-              <Text style={styles.btnText}>Permitir cámara</Text>
+              <Text style={styles.permissionBtnText}>Permitir cámara</Text>
             </Pressable>
           </View>
         ) : isAsking ? (
@@ -402,12 +406,16 @@ const styles = StyleSheet.create({
   container:      { flex: 1, backgroundColor: "#000" },
   camera:         { flex: 1 },
   overlay:        { position: "absolute", bottom: 0, left: 0, right: 0, padding: 24, alignItems: "center", gap: 16 },
-  permissionBox:  { width: "100%", gap: 16, alignItems: "center" },
+  permissionBox:  { width: "100%", alignItems: "center", gap: 16, paddingHorizontal: 8 },
+  permissionIconCircle: { width: 96, height: 96, borderRadius: 48, backgroundColor: "#1c1c1c", alignItems: "center", justifyContent: "center", marginBottom: 8 },
+  permissionTitle: { color: "#fff", fontSize: 22, fontWeight: "700", textAlign: "center" },
+  permissionText: { color: "#999", fontSize: 15, textAlign: "center", lineHeight: 22, paddingHorizontal: 16 },
+  permissionBtn: { backgroundColor: "#fff", borderRadius: 50, paddingVertical: 16, paddingHorizontal: 48, marginTop: 8 },
+  permissionBtnText: { color: "#000", fontSize: 16, fontWeight: "700" },
   btnRow:         { flexDirection: "row", gap: 12, width: "100%" },
   btn:            { flex: 1, backgroundColor: "#fff", paddingVertical: 18, borderRadius: 50, alignItems: "center" },
   loadingBox:     { alignItems: "center", gap: 12 },
   loadingText:    { color: "#fff", fontSize: 18, fontWeight: "500" },
-  permissionText: { color: "#fff", fontSize: 18, textAlign: "center", marginBottom: 24, lineHeight: 26 },
   descBox:        { backgroundColor: "rgba(0,0,0,0.72)", borderRadius: 16, padding: 16, maxWidth: "100%" },
   descText:       { color: "#fff", fontSize: 16, lineHeight: 24, textAlign: "center" },
   btnText:        { fontSize: 20, fontWeight: "700", color: "#000" },
